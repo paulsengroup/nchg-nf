@@ -20,7 +20,7 @@ on:
 jobs:
   build-plotting-dockerfile:
     name: Build plotting Dockerfile
-    uses: paulsengroup/NCHG-nf/.github/workflows/build-dockerfile.yml@main
+    uses: paulsengroup/nchg-nf/.github/workflows/build-dockerfile.yml@main
     with:
       dockerfile-glob: "containers/plotting*.Dockerfile"
 

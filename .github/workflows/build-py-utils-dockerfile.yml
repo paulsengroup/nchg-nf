@@ -20,7 +20,7 @@ on:
 jobs:
   build-py-utils-dockerfile:
     name: Build Python utils Dockerfile
-    uses: paulsengroup/NCHG-nf/.github/workflows/build-dockerfile.yml@main
+    uses: paulsengroup/nchg-nf/.github/workflows/build-dockerfile.yml@main
     with:
       dockerfile-glob: "containers/py-utils*.Dockerfile"
 

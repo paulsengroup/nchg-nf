@@ -20,7 +20,7 @@ on:
 jobs:
   build-hictkpy-dockerfile:
     name: Build hictkpy Dockerfile
-    uses: paulsengroup/NCHG-nf/.github/workflows/build-dockerfile.yml@main
+    uses: paulsengroup/nchg-nf/.github/workflows/build-dockerfile.yml@main
     with:
       dockerfile-glob: "containers/hictkpy*.Dockerfile"
 

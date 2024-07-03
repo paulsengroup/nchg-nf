@@ -22,9 +22,9 @@ ENTRYPOINT ["/usr/local/bin/_entrypoint.sh"]
 CMD ["/bin/bash"]
 
 LABEL org.opencontainers.image.authors='Roberto Rossini <roberros@uio.no>'
-LABEL org.opencontainers.image.url='https://github.com/paulsengroup/NCHG-nf'
-LABEL org.opencontainers.image.documentation='https://github.com/paulsengroup/NCHG-nf'
-LABEL org.opencontainers.image.source='https://github.com/paulsengroup/NCHG-nf'
+LABEL org.opencontainers.image.url='https://github.com/paulsengroup/nchg-nf'
+LABEL org.opencontainers.image.documentation='https://github.com/paulsengroup/nchg-nf'
+LABEL org.opencontainers.image.source='https://github.com/paulsengroup/nchg-nf'
 LABEL org.opencontainers.image.licenses='MIT'
 LABEL org.opencontainers.image.title="${CONTAINER_TITLE:-hictkpy}"
 LABEL org.opencontainers.image.version="${CONTAINER_VERSION:-latest}"
