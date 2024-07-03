@@ -18,12 +18,12 @@ def parse_sample_sheet_row(row) {
     hic_fname = strip_resolution_from_cooler_uri(row.hic_file)
     files = [hic_fname]
 
-    tads = make_optional_input(row.tads)
+    domains = make_optional_input(row.domains)
     mask = make_optional_input(row.mask)
 
     tuple(row.sample,
           files,
-          tads,
+          domains,
           mask)
 }
 
@@ -35,7 +35,7 @@ workflow SAMPLESHEET {
         sample
         hic_file
         resolution
-        tads
+        domains
         mask
 
     main:
@@ -55,7 +55,7 @@ workflow SAMPLESHEET {
                 sample,
                 hic_file,
                 resolution,
-                tads ? tads : "",
+                domains ? domains : "",
                 mask ? mask : ""
             )
 
@@ -95,7 +95,7 @@ process GENERATE {
         val sample
         val hic_file
         val resolution
-        val tads
+        val domains
         val mask
 
     output:
@@ -111,11 +111,11 @@ process GENERATE {
             fi
         done
 
-        printf 'sample\\thic_file\\tresolution\\ttads\\tmask\\n' > sample_sheet.tsv
+        printf 'sample\\thic_file\\tresolution\\tdomains\\tmask\\n' > sample_sheet.tsv
         printf '%s\\t%s\\t%s\\t%s\\t%s\\n' '!{sample}' \\
                                  '!{hic_file}' \\
                                  '!{resolution}' \\
-                                 '!{tads}' \\
+                                 '!{domains}' \\
                                  '!{mask}' >> sample_sheet.tsv
         '''
 }
