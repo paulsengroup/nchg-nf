@@ -4,9 +4,13 @@
 
 .idea/
 .vscode/
+containers/cache
+data/
+results/
 test/
 venv/
 work/
 
 
 .nextflow*
+*.tsv
