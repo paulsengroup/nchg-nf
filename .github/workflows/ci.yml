@@ -103,6 +103,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ preproc-test-dataset ]
 
+    permissions:
+      contents: read
+      packages: read
+
     strategy:
       matrix:
         NXF_VER: [ "22.10.8", "latest-stable" ]
