@@ -1,8 +1,8 @@
-# Copyright (C) 2023 Roberto Rossini <roberros@uio.no>
+# Copyright (C) 2024 Roberto Rossini <roberros@uio.no>
 # SPDX-License-Identifier: MIT
 
 [project]
-name = "call_tad_cliques"
+name = "nchg-nf"
 license = { text = "MIT License" }
 
 [tool.pycodestyle]
@@ -12,7 +12,7 @@ max_line_length = 120
 
 [tool.black]
 line-length = 120
-target-version = ["py38"]
+target-version = ["py310"]
 
 [tool.isort]
 profile = "black"
