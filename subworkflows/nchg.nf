@@ -249,13 +249,14 @@ process GENERATE_MASK {
         if (!gaps.toString().isEmpty()) {
             opts.push(gaps)
         }
+        skip=opts.size() == 0
         if (!cytoband.toString().isEmpty()) {
             opts.push("--cytoband='${cytoband}'")
         }
 
         opts=opts.join(" ")
 
-        if (opts.size() == 0) {
+        if (skip) {
             '''
             echo "" | gzip -9 > '__!{sample}.mask.bed.gz'
             '''
