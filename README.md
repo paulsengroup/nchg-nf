@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 
 This repository hosts a Nextflow workflow to identify statistically significant interactions from Hi-C data using [NCHG](https://github.com/paulsengroup/NCHG).
 
-
 ## Requirements
 
 ### Software requirements
@@ -21,6 +20,7 @@ This repository hosts a Nextflow workflow to identify statistically significant 
 ### Required input files
 
 The workflow can be run in two ways:
+
 1. Using a sample sheet (recommended, supports processing multiple samples at once)
 2. By specifying options directly on the CLI or using a config
 
@@ -29,16 +29,16 @@ The workflow can be run in two ways:
 The samplesheet should be a TSV file with the following columns:
 
 | sample       | hic_file                               | resolution | domains                  | mask              |
-|--------------|----------------------------------------|------------|--------------------------|-------------------|
+| ------------ | -------------------------------------- | ---------- | ------------------------ | ----------------- |
 | sample_name  | myfile.hic                             | 50000      | tads.bed                 | mask.bed          |
 | 4DNFI74YHN5W | 4DNFI74YHN5W.mcool::/resolutions/50000 | 50000      | 4DNFI74YHN5W_domains.bed | assembly_gaps.bed |
 
-
-- __sample__: Sample names/ids. This field will be used as prefix to in the output file names (see [below](#running-the-workflow)).
-- __hic_file__: Path to a file in .hic or Cooler format.
-- __resolution__: Resolution to be used for the data analysis (50-100kbp are good starting points).
-- __domains__ (optional) : path to a BED3+ file with a list of pre-computed domains (e.g. TADs). When provided, NCHG will aggregate interactions between all possible pairs of domains, and compute their statistical significance.
-- __mask__ (optional): path to a BED3+ file with the list of regions to be masked out.
+- **sample**: Sample names/ids. This field will be used as prefix to in the output file names (see [below](#running-the-workflow)).
+- **hic_file**: Path to a file in .hic or Cooler format.
+- **resolution**: Resolution to be used for the data analysis (50-100kbp are good starting points).
+- **domains** (optional) : path to a BED3+ file with a list of pre-computed domains (e.g. TADs).
+  When provided, NCHG will aggregate interactions between all possible pairs of domains, and compute their statistical significance.
+- **mask** (optional): path to a BED3+ file with the list of regions to be masked out.
 
 URI syntax for multi-resolution Cooler files is supported (e.g. `myfile.mcool::/resolutions/bin_size`).
 
@@ -49,9 +49,9 @@ Furthermore, all contact matrices (as well as domain and mask files when provide
 
 To run the workflow without a samplesheet is not available, the following parameters are required:
 
-- __sample__
-- __hic_file__
-- __resolution__
+- **sample**
+- **hic_file**
+- **resolution**
 
 Parameters have the same meaning as the header fields outlined in the [previous section](#using-a-samplesheet).
 
@@ -65,6 +65,7 @@ nextflow run --sample='4DNFI74YHN5W' \
 ```
 
 Alternatively, parameters can be written to a `config` file:
+
 ```console
 user@dev:/tmp$ cat myconfig.txt
 
@@ -74,7 +75,8 @@ resolution   = 50000
 ```
 
 and the `config` file is then passed to `nextflow run`:
-``` bash
+
+```bash
 nextflow run -c myconfig.txt ...
 ```
 
@@ -84,21 +86,21 @@ nextflow run -c myconfig.txt ...
 
 In addition to the mandatory parameters, the pipeline accepts the following parameters:
 
-- __cytoband__: path to a [cytoband](https://software.broadinstitute.org/software/igv/cytoband) file. Used to mask centromeric regions.
-- __assembly_gaps__: path to a BED file with the list of assembly gaps/unmappable regions.
+- **cytoband**: path to a [cytoband](https://software.broadinstitute.org/software/igv/cytoband) file. Used to mask centromeric regions.
+- **assembly_gaps**: path to a BED file with the list of assembly gaps/unmappable regions.
 
 Note that NCHG by default uses the `MAD-max` filter to remove bins with suspiciously high or low marginals, so providing the above files is usually not requirerd.
 
-- __mad_max__: cutoff used by NCHG when performing the `MAD-max` filtering.
-- __bad_bin_fraction__: bad bin fraction used by NCHG to discard domains overlapping with a high fraction of bad bins.
-- __fdr_cis__: adjusted pvalue used by NCHG to filter significant cis interactions.
-- __log_ratio_cis__: log ratio used by NCHG to filter significant cis interactions.
-- __fdr_trans__: adjusted pvalue used by NCHG to filter significant trans interactions.
-- __log_ratio_trans__: log ratio used by NCHG to filter significant trans interactions.
-- __use_cis_interactions__: use interactions from the cis portion of the Hi-C matrix.
-- __use_trans_interactions__: use interactions from the trans portion of the Hi-C matrix.
+- **mad_max**: cutoff used by NCHG when performing the `MAD-max` filtering.
+- **bad_bin_fraction**: bad bin fraction used by NCHG to discard domains overlapping with a high fraction of bad bins.
+- **fdr_cis**: adjusted pvalue used by NCHG to filter significant cis interactions.
+- **log_ratio_cis**: log ratio used by NCHG to filter significant cis interactions.
+- **fdr_trans**: adjusted pvalue used by NCHG to filter significant trans interactions.
+- **log_ratio_trans**: log ratio used by NCHG to filter significant trans interactions.
+- **use_cis_interactions**: use interactions from the cis portion of the Hi-C matrix.
+- **use_trans_interactions**: use interactions from the trans portion of the Hi-C matrix.
 
-By default, the workflow results are published under `result/`. The output folder can be customized through the __outdir__ parameter.
+By default, the workflow results are published under `result/`. The output folder can be customized through the **outdir** parameter.
 
 For a complete list of parameters supported by the workflow refer to the workflow main [config](nextflow.config) file.
 
@@ -111,14 +113,19 @@ First, download the example datasets using script `utils/download_example_datase
 utils/download_example_datasets.sh data/
 ```
 
-Next, create a `samplesheet.tsv` file like the follwing (make sure you are using tabs, not spaces!)
+Next, create a `samplesheet.tsv` file like the following (make sure you are using tabs, not spaces!)
+
+<!-- prettier-ignore-start -->
 
 ```tsv
 sample   hic_file      resolution    domains    mask
 example  data/4DNFI74YHN5W.mcool   50000    
 ```
 
+<!-- prettier-ignore-end -->
+
 Finally, run the workflow with:
+
 ```console
 user@dev:/tmp$ nextflow run --max_cpus=8 \
                             --max_memory=16.GB \
@@ -173,6 +180,7 @@ Cached      : 246
 ```
 
 This will create a `data/results/` folder with the following files:
+
 - `example.filtered.tsv.gz` - TSV with the statistically significant interactions detected by NCHG.
 - `expected_values_example.cis.h5` - HDF5 file with the expected values computed by NCHG.
 - `plots/example/example.*.*.png` - Plots showing the log ratio computed by NCHG for each chromosome pair analyzed.
@@ -182,10 +190,12 @@ This will create a `data/results/` folder with the following files:
 <summary>Troubleshooting</summary>
 
 If you get permission errors when using `-with-docker`:
+
 - Pass option `-process.containerOptions="--user root"` to `nextflow run`
 
 If you get an error similar to:
-```
+
+```txt
 Cannot find revision `v0.4.0` -- Make sure that it exists in the remote repository `https://github.com/paulsengroup/nchg-nf`
 ```
 
@@ -195,6 +205,6 @@ try to remove folder `~/.nextflow/assets/paulsengroup/nchg-nf` before running th
 
 ## Getting help
 
-If you are having trouble running the workflow feel free to reach out by starting a new discussion [here](https://github.com/paulsengroup/nchg-nf/discussions).
+If you are having trouble running the workflow feel free to reach out by [starting a new discussion here](https://github.com/paulsengroup/nchg-nf/discussions).
 
 Bug reports and feature requests can be submitted by opening an [issue](https://github.com/paulsengroup/nchg-nf/issues).

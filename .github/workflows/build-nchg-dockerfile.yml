@@ -5,7 +5,7 @@ name: Build NCHG Dockerfile
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
       - ".github/workflows/build-nchg*dockerfile.yml"
       - ".github/workflows/build-dockerfile.yml"

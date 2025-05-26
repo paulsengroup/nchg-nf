@@ -5,7 +5,7 @@ name: Build Python utils Dockerfile
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
       - ".github/workflows/build-py-utils*dockerfile.yml"
       - ".github/workflows/build-dockerfile.yml"
