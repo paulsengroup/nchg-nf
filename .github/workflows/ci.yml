@@ -5,14 +5,13 @@ name: CI
 
 on:
   push:
-    branches: [ main, devel ]
+    branches: [main, devel]
     paths:
       - ".github/workflows/ci.yml"
       - ".dockerignore"
       - "main.nf"
       - "nextflow.config"
       - "bin/*.py"
-
 
   pull_request:
     paths:
@@ -23,7 +22,7 @@ on:
       - "bin/*.py"
 
   release:
-    types: [ published ]
+    types: [published]
 
 # https://stackoverflow.com/a/72408109
 concurrency:
@@ -35,8 +34,8 @@ defaults:
     shell: bash
 
 env:
-  TEST_DATASET_URL: 'https://4dn-open-data-public.s3.amazonaws.com/fourfront-webprod/wfoutput/8b9d6836-0d6b-4c2f-9eaa-323f4fd7b6e4/4DNFI74YHN5W.mcool'
-  TEST_DATASET_SHA256: 'a5e3dc9e9e6b68b577c086dcbf34e8a21094bf34fa27461440642e9273ee228b'
+  TEST_DATASET_URL: "https://4dn-open-data-public.s3.amazonaws.com/fourfront-webprod/wfoutput/8b9d6836-0d6b-4c2f-9eaa-323f4fd7b6e4/4DNFI74YHN5W.mcool"
+  TEST_DATASET_SHA256: "a5e3dc9e9e6b68b577c086dcbf34e8a21094bf34fa27461440642e9273ee228b"
   NXF_ANSI_LOG: false
 
 jobs:
@@ -47,61 +46,60 @@ jobs:
       cache-key: ${{ steps.generate-cache-key.outputs.key }}
 
     steps:
-    - name: Generate cache key
-      id: generate-cache-key
-      run: |
-        key="test-dataset-$TEST_DATASET_SHA256"
-        echo "key=$key" >> $GITHUB_OUTPUT
+      - name: Generate cache key
+        id: generate-cache-key
+        run: |
+          key="test-dataset-$TEST_DATASET_SHA256"
+          echo "key=$key" >> $GITHUB_OUTPUT
 
-    - name: Cache test datasets
-      id: cache-dataset
-      uses: actions/cache@v4
-      with:
-        key: ${{ steps.generate-cache-key.outputs.key }}
-        path: data/
+      - name: Cache test datasets
+        id: cache-dataset
+        uses: actions/cache@v4
+        with:
+          key: ${{ steps.generate-cache-key.outputs.key }}
+          path: data/
 
-    - name: Download test dataset
-      if: steps.cache-dataset.outputs.cache-hit != 'true'
-      run: |
-        mkdir data
-        cd data
-        curl -LO "$TEST_DATASET_URL"
+      - name: Download test dataset
+        if: steps.cache-dataset.outputs.cache-hit != 'true'
+        run: |
+          mkdir data
+          cd data
+          curl -LO "$TEST_DATASET_URL"
 
-    - name: Checksum test dataset
-      if: steps.cache-dataset.outputs.cache-hit != 'true'
-      run: |
-        echo "$TEST_DATASET_SHA256  data/$(basename "$TEST_DATASET_URL")" > checksum.sha256
-        shasum -c checksum.sha256
+      - name: Checksum test dataset
+        if: steps.cache-dataset.outputs.cache-hit != 'true'
+        run: |
+          echo "$TEST_DATASET_SHA256  data/$(basename "$TEST_DATASET_URL")" > checksum.sha256
+          shasum -c checksum.sha256
 
-    - name: Generate requirements.txt
-      if: steps.cache-dataset.outputs.cache-hit != 'true'
-      run: |
-        echo 'cooler==0.10.0' > requirements.txt
+      - name: Generate requirements.txt
+        if: steps.cache-dataset.outputs.cache-hit != 'true'
+        run: |
+          echo 'cooler==0.10.0' > requirements.txt
 
-    - name: Setup Python
-      if: steps.cache-dataset.outputs.cache-hit != 'true'
-      uses: actions/setup-python@v5
-      with:
-        python-version: 3.12
-        cache: pip
+      - name: Setup Python
+        if: steps.cache-dataset.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+          cache: pip
 
-    - name: Remove unused resolutions
-      if: steps.cache-dataset.outputs.cache-hit != 'true'
-      run: |
-        src="data/$(basename "$TEST_DATASET_URL")"
-        dest="$src.new"
+      - name: Remove unused resolutions
+        if: steps.cache-dataset.outputs.cache-hit != 'true'
+        run: |
+          src="data/$(basename "$TEST_DATASET_URL")"
+          dest="$src.new"
 
-        pip3 install -r requirements.txt
+          pip3 install -r requirements.txt
 
-        cooler cp "$src::/resolutions/100000" "$dest"
+          cooler cp "$src::/resolutions/100000" "$dest"
 
-        mv "$dest" "$src"
-
+          mv "$dest" "$src"
 
   test-workflow:
     name: Test workflow
     runs-on: ubuntu-latest
-    needs: [ preproc-test-dataset ]
+    needs: [preproc-test-dataset]
 
     permissions:
       contents: read
@@ -109,7 +107,7 @@ jobs:
 
     strategy:
       matrix:
-        NXF_VER: [ "22.10.8", "latest-stable" ]
+        NXF_VER: ["22.10.8", "latest-stable"]
 
     steps:
       - name: Checkout repo

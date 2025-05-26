@@ -105,7 +105,7 @@ process GENERATE {
         '''
         for param in '!{sample}' '!{hic_file}' '!{resolution}'; do
             if [[ "$param" == 'null' ]]; then
-                2>&1 echo 'Parameters sample, hic_file is required when no samplesheet is provided!'
+                2>&1 echo 'Parameters sample, hic_file, and resolution are required when no samplesheet is provided!'
                 2>&1 echo "sample='!{sample}'; hic_file='!{hic_file}'; resolution='!{resolution}'"
                 exit 1
             fi

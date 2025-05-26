@@ -37,6 +37,9 @@ workflow {
     log.info("-- fdr_trans: ${params.fdr_trans}")
     log.info("-- log_ratio_trans: ${params.log_ratio_trans}")
 
+    log.info("-- use_cis_interactions: ${params.use_cis_interactions}")
+    log.info("-- use_trans_interactions: ${params.use_trans_interactions}")
+
     log.info("-- plot_format: ${params.plot_format}")
     log.info("-- hic_tgt_resolution_plots: ${params.hic_tgt_resolution_plots}")
     log.info("-- plot_sig_interactions_cmap_lb: ${params.plot_sig_interactions_cmap_lb}")
