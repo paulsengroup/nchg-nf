@@ -125,6 +125,13 @@ jobs:
         with:
           version: ${{ matrix.NXF_VER }}
 
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Test workflow
         run: |
           printf '%s\t%d\t%d' chr1 0 10000000 > mask.bed
