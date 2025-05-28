@@ -10,7 +10,7 @@ ARG CONTAINER_TITLE
 ARG PIP_NO_CACHE_DIR=0
 
 RUN apt-get update \
-&& apt-get install -y procps \
+&& apt-get install -y procps zstd \
 && rm -rf /var/lib/apt/lists/*
 
 RUN pip install \
