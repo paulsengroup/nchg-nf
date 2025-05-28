@@ -13,7 +13,9 @@ RUN apt-get update \
 && apt-get install -y procps \
 && rm -rf /var/lib/apt/lists/*
 
-RUN pip install "hictkpy[all]==$CONTAINER_VERSION"
+RUN pip install \
+    "hictkpy[all]==$CONTAINER_VERSION" \
+    'zstandard'
 
 RUN python3 -c 'import hictkpy'
 
