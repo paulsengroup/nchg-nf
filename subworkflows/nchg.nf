@@ -67,19 +67,39 @@ workflow NCHG {
             mad_max
         )
 
-        GENERATE_CHROMOSOME_PAIRS(
-            hic_files.combine(interaction_types)
-        )
-
         DUMP_CHROM_SIZES(
             hic_files
+        )
+
+        PREPROCESS_DOMAINS(
+            domains
+        )
+
+        CARTESIAN_PRODUCT(
+            PREPROCESS_DOMAINS.out.domains
+                .combine(DUMP_CHROM_SIZES.out.tsv, by: 0)
+        )
+
+        CARTESIAN_PRODUCT.out.domains
+            .map { sample, file ->
+              if (file.extension == 'skip') {
+                file = []
+              }
+              tuple(sample, file)
+            }
+            .set { valid_domains }
+
+        GENERATE_CHROMOSOME_PAIRS(
+            hic_files
+                .combine(valid_domains, by: 0)
+                .combine(interaction_types)
         )
 
         GENERATE_CHROMOSOME_PAIRS.out
             .splitCsv(sep: "\t", header: ["sample", "chrom1", "chrom2"])
             .map { tuple(it.sample, it.chrom1, it.chrom2) }
             .combine(hic_files, by: 0)
-            .combine(domains, by: 0)
+            .combine(valid_domains, by: 0)
             .combine(EXPECTED.out.h5, by: 0)
             .set { nchg_compute_tasks }
 
@@ -297,6 +317,74 @@ process DUMP_CHROM_SIZES {
         '''
 }
 
+process PREPROCESS_DOMAINS {
+    label 'process_short'
+    tag "$sample"
+
+    input:
+        tuple val(sample),
+              path(domains)
+
+    output:
+        tuple val(sample),
+              path("*.{zst,skip}"),
+        emit: domains
+
+    shell:
+        outprefix="${sample}.domains"
+        '''
+        if [ '!{domains}' = '' ]; then
+          touch '!{outprefix}.skip'
+          exit 0
+        fi
+
+        tmpfile='!{outprefix}.tmp'
+
+        set -o pipefail
+        preprocess_domains.py '!{domains}' | zstd -13 -o "$tmpfile"
+        set +o pipefail
+
+        num_cols="$(zstdcat "$tmpfile" | head -n 1 | wc -w)"
+
+        if [ "$num_cols" -eq 6 ]; then
+          mv "$tmpfile" '!{outprefix}.bedpe.zst'
+        else
+          mv "$tmpfile" '!{outprefix}.bed.zst'
+        fi
+        '''
+}
+
+process CARTESIAN_PRODUCT {
+    label 'process_short'
+    tag "$sample"
+
+    input:
+        tuple val(sample),
+              path(domains),
+              path(chrom_sizes)
+
+    output:
+        tuple val(sample),
+              path("*.{bedpe.zst,skip}"),
+        emit: domains
+
+    shell:
+        outprefix="${sample}.domains.ok"
+        '''
+        set -o pipefail
+
+        if [[ '!{domains}' == *.skip ]]; then
+          touch '!{outprefix}.skip'
+          exit 0
+        fi
+
+        NCHG cartesian-product \\
+            --chrom-sizes '!{chrom_sizes}' \\
+            <(zstd -dcf '!{domains}') |
+            zstd -13 -o '!{outprefix}.bedpe.zst'
+        '''
+}
+
 process GENERATE_CHROMOSOME_PAIRS {
     label 'process_very_short'
     tag "$sample"
@@ -305,31 +393,28 @@ process GENERATE_CHROMOSOME_PAIRS {
         tuple val(sample),
               path(hic),
               val(resolution),
+              path(domains),
               val(interaction_type)
 
     output:
         stdout emit: tsv
 
     shell:
+        opts=[
+            "--resolution='${resolution}'",
+            "--interaction-type='${interaction_type}'"
+        ]
+
+        if (domains.size() != 0) {
+            opts.push("--domains='${domains}'")
+        }
+
+        opts=opts.join(" ")
         '''
-        #!/usr/bin/env python3
-
-        import hictkpy
-
-        chroms = list(
-            hictkpy.File("!{hic}", int("!{resolution}")).chromosomes().keys()
-        )
-
-        sample = "!{sample}"
-        interaction_type = "!{interaction_type}"
-
-        for i, chrom1 in enumerate(chroms):
-            for chrom2 in chroms[i:]:
-                do_print = interaction_type == "cis" and chrom1 == chrom2
-                do_print |= interaction_type == "trans" and chrom1 != chrom2
-
-                if do_print:
-                    print(f"{sample}\\t{chrom1}\\t{chrom2}")
+        generate_chromosome_pairs.py \\
+            '!{sample}' \\
+            '!{hic}' \\
+            !{opts}
         '''
 }
 
@@ -431,13 +516,15 @@ process COMPUTE{
 
         NCHG compute \\
             '!{hic}' \\
-            '!{outname}' \\
+            'out/!{outname}' \\
             --resolution='!{resolution}' \\
             --chrom1='!{chrom1}' \\
             --chrom2='!{chrom2}' \\
             --expected-values='!{expected_values}' \\
             --bad-bin-fraction='!{bad_bin_fraction}' \\
             !{opts}
+
+        mv 'out/!{outname}' '!{outname}'
         '''
 }
 
@@ -463,6 +550,7 @@ process MERGE {
         outname="${sample}.${interaction_type}.parquet"
         '''
         NCHG merge '!{input_prefix}' '!{outname}' \\
+            --ignore-report-file \\
             --threads='!{task.cpus}'
         '''
 }
