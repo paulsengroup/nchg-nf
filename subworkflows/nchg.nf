@@ -387,7 +387,7 @@ process CARTESIAN_PRODUCT {
 
 process GENERATE_CHROMOSOME_PAIRS {
     label 'process_very_short'
-    tag "$sample"
+    tag "$sample ($interaction_type)"
 
     input:
         tuple val(sample),
@@ -476,7 +476,7 @@ process EXPECTED {
 }
 
 process COMPUTE{
-    tag "$sample ($chrom1:$chrom2)"
+    tag "$sample [$chrom1:$chrom2]"
 
 
     input:
