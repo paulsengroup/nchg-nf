@@ -743,6 +743,7 @@ process PLOT_SIGNIFICANT {
             --resolution '!{resolution}' \\
             --plot-format '!{plot_format}' \\
             --min-value '!{cmap_lb}' \\
-            --max-value '!{cmap_ub}'
+            --max-value '!{cmap_ub}' \\
+            --nproc '!{task.cpus}'
         '''
 }
