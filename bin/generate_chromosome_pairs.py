@@ -79,21 +79,30 @@ def import_chrom_pairs_from_bedpe(
     return set((c1, c2) for c1, c2 in df.itertuples(index=False))
 
 
+def chrom_pair_has_interactions(f: hictkpy.File, chrom1: str, chrom2: str) -> bool:
+    return any(True for _ in f.fetch(chrom1, chrom2))
+
+
 def filter_chrom_pairs(
+    f: hictkpy.File,
     chrom_pairs: List[Tuple[str, str]],
     bedpe: Optional[pathlib.Path],
     interaction_type: Optional[str],
 ) -> List[Tuple[str, str]]:
     """
     Return the intersection between the given chromosome pairs and the chromosome pairs imported from the BEDPE file.
+    Skip chromosome pairs without interactions.
     """
-    if bedpe is None:
-        return chrom_pairs
+    unique_pairs = set(chrom_pairs)
+    if bedpe is not None:
+        unique_pairs &= import_chrom_pairs_from_bedpe(bedpe, interaction_type)
 
-    cp1 = set(chrom_pairs)
-    cp2 = import_chrom_pairs_from_bedpe(bedpe, interaction_type)
+    pairs = []
+    for chrom1, chrom2 in unique_pairs:
+        if chrom_pair_has_interactions(f, chrom1, chrom2):
+            pairs.append((chrom1, chrom2))
 
-    return list(sorted(cp1 & cp2))
+    return list(sorted(pairs))
 
 
 def make_chrom_pairs_cis(chroms: List[str]) -> List[Tuple[str, str]]:
@@ -110,14 +119,13 @@ def make_chrom_pairs_trans(chroms: List[str]) -> List[Tuple[str, str]]:
 
 
 def import_chrom_pairs_from_matrix(
-    path: pathlib.Path,
-    resolution: Optional[int],
+    hf: hictkpy.File,
     interaction_type: Optional[str],
 ) -> List[Tuple[str, str]]:
     """
     Import chromosome pairs from a Hi-C matrix.
     """
-    chroms = list(hictkpy.File(path, resolution).chromosomes().keys())
+    chroms = list(hf.chromosomes().keys())
 
     if interaction_type == "trans":
         return make_chrom_pairs_trans(chroms)
@@ -135,13 +143,15 @@ def main():
     sample = args["sample"]
     interaction_type = args["interaction_type"]
 
+    hf = hictkpy.File(args["hic-file"], args["resolution"])
+
     chrom_pairs = import_chrom_pairs_from_matrix(
-        args["hic-file"],
-        args["resolution"],
+        hf,
         interaction_type,
     )
 
     chrom_pairs = filter_chrom_pairs(
+        hf,
         chrom_pairs,
         bedpe=args["domains"],
         interaction_type=interaction_type,
