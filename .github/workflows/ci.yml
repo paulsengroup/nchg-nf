@@ -12,6 +12,9 @@ on:
       - "main.nf"
       - "nextflow.config"
       - "bin/*.py"
+      - "config/ci.config"
+      - "subworkflows/**"
+      - "test/samplesheets/*.tsv"
 
   pull_request:
     paths:
@@ -20,6 +23,9 @@ on:
       - "main.nf"
       - "nextflow.config"
       - "bin/*.py"
+      - "config/ci.config"
+      - "subworkflows/**"
+      - "test/samplesheets/*.tsv"
 
   release:
     types: [published]
@@ -34,8 +40,11 @@ defaults:
     shell: bash
 
 env:
-  TEST_DATASET_URL: "https://4dn-open-data-public.s3.amazonaws.com/fourfront-webprod/wfoutput/8b9d6836-0d6b-4c2f-9eaa-323f4fd7b6e4/4DNFI74YHN5W.mcool"
-  TEST_DATASET_SHA256: "a5e3dc9e9e6b68b577c086dcbf34e8a21094bf34fa27461440642e9273ee228b"
+  TEST_DATASET_URL: "https://zenodo.org/records/15546722/files/nchg_test_data.tar.zst?download=1"
+  TEST_DATASET_SHA256: "5337b8c117492b3f3bec68aef8406e89b81ed6741ebaf42b41bb43d5e161b3b6"
+  TEST_MATRIX: "ENCFF447ERX.minified.mcool"
+  TEST_DOMAINS_BED: "ENCFF447ERX.1000000.compartments.bed"
+  TEST_DOMAINS_BEDPE: "ENCFF447ERX.1000000.domains.bedpe"
   NXF_ANSI_LOG: false
 
 jobs:
@@ -52,49 +61,50 @@ jobs:
           key="test-dataset-$TEST_DATASET_SHA256"
           echo "key=$key" >> $GITHUB_OUTPUT
 
-      - name: Cache test datasets
+      - name: Lookup cached test datasets
         id: cache-dataset
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           key: ${{ steps.generate-cache-key.outputs.key }}
-          path: data/
+          path: test/data/
+          lookup-only: true
 
       - name: Download test dataset
         if: steps.cache-dataset.outputs.cache-hit != 'true'
         run: |
-          mkdir data
-          cd data
-          curl -LO "$TEST_DATASET_URL"
+          curl -L "$TEST_DATASET_URL" -o dataset.tar.zst
+          curl -LO 'https://hgdownload.cse.ucsc.edu/goldenPath/hg38/database/cytoBand.txt.gz'
+          curl -LO 'https://hgdownload.cse.ucsc.edu/goldenPath/mm10/database/gap.txt.gz'
 
       - name: Checksum test dataset
         if: steps.cache-dataset.outputs.cache-hit != 'true'
         run: |
-          echo "$TEST_DATASET_SHA256  data/$(basename "$TEST_DATASET_URL")" > checksum.sha256
+          echo "$TEST_DATASET_SHA256  dataset.tar.zst" > checksum.sha256
           shasum -c checksum.sha256
 
-      - name: Generate requirements.txt
+      - name: Remove unused files
         if: steps.cache-dataset.outputs.cache-hit != 'true'
         run: |
-          echo 'cooler==0.10.0' > requirements.txt
+          tar -xf dataset.tar.zst
+          mkdir staging
 
-      - name: Setup Python
+          for name in "$TEST_MATRIX" "$TEST_DOMAINS_BED" "$TEST_DOMAINS_BEDPE"; do
+            cp -L "test/data/$name" "staging/$name"
+          done
+
+          rm -rf test/
+
+          mkdir -p test/data
+          mv staging/* cytoBand.txt.gz gap.txt.gz test/data/
+
+          ls -lah test/data/
+
+      - name: Cache test datasets
         if: steps.cache-dataset.outputs.cache-hit != 'true'
-        uses: actions/setup-python@v5
+        uses: actions/cache/save@v4
         with:
-          python-version: 3.12
-          cache: pip
-
-      - name: Remove unused resolutions
-        if: steps.cache-dataset.outputs.cache-hit != 'true'
-        run: |
-          src="data/$(basename "$TEST_DATASET_URL")"
-          dest="$src.new"
-
-          pip3 install -r requirements.txt
-
-          cooler cp "$src::/resolutions/100000" "$dest"
-
-          mv "$dest" "$src"
+          key: ${{ steps.generate-cache-key.outputs.key }}
+          path: test/data/
 
   test-workflow:
     name: Test workflow
@@ -117,7 +127,7 @@ jobs:
         uses: actions/cache@v4
         with:
           key: ${{ needs.preproc-test-dataset.outputs.cache-key }}
-          path: data/
+          path: test/data/
           fail-on-cache-miss: true
 
       - name: Install Nextflow
@@ -132,19 +142,57 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Test workflow
+      - name: Test workflow (wo/ samplesheet)
         run: |
-          printf '%s\t%d\t%d' chr1 0 10000000 > mask.bed
+          printf '%s\t%d\t%d' chr21 0 5000000 > mask.bed
 
-          nextflow run -c config/test.config \
+          nextflow run -c config/ci.config \
                        --sample="test" \
-                       --hic_file="data/$(basename "$TEST_DATASET_URL")" \
+                       --hic_file="test/data/$TEST_MATRIX" \
                        --mask=mask.bed \
                        --resolution=100000 \
-                       --outdir=data/out \
+                       --outdir=test/out/wo_samplesheet \
                        --max_cpus=$(nproc) \
-                       --max_memory=6.GB \
-                       --max_time=2.h \
                        .
 
-          ls -lah data/out/
+          ls -lah test/out/wo_samplesheet
+
+      - name: Test workflow (w/ samplesheet; single sample)
+        run: |
+          nextflow run -c config/ci.config \
+                       --sample_sheet=test/samplesheets/single_sample.tsv \
+                       --outdir=test/out/single_sample \
+                       --max_cpus=$(nproc) \
+                       .
+
+          ls -lah test/out/single_sample
+
+      - name: Test workflow (w/ samplesheet; multiple_samples)
+        run: |
+          nextflow run -c config/ci.config \
+                       --sample_sheet=test/samplesheets/multiple_samples.tsv \
+                       --outdir=test/out/multiple_samples \
+                       --max_cpus=$(nproc) \
+                       .
+
+          ls -lah test/out/multiple_samples
+
+      - name: Test workflow (w/ samplesheet; 1D domains)
+        run: |
+          nextflow run -c config/ci.config \
+                       --sample_sheet=test/samplesheets/1d_domains.tsv \
+                       --outdir=test/out/1d_domains \
+                       --max_cpus=$(nproc) \
+                       .
+
+          ls -lah test/out/1d_domains
+
+      - name: Test workflow (w/ samplesheet; 2D domains)
+        run: |
+          nextflow run -c config/ci.config \
+                       --sample_sheet=test/samplesheets/2d_domains.tsv \
+                       --outdir=test/out/2d_domains \
+                       --max_cpus=$(nproc) \
+                       .
+
+          ls -lah test/out/2d_domains
