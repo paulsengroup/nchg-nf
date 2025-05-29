@@ -198,25 +198,10 @@ workflow NCHG {
                 .map { tuple(it.sample, it.resolution) }
                 .set { plotting_resolutions }
 
-            GENERATE_CHROMOSOME_PAIRS.out.tsv
-                .splitCsv(header: ["sample", "chrom1", "chrom2"],
-                          sep: "\t")
-                .map { tuple(it.sample, it.chrom1, it.chrom2) }
-                .set { chrom_pairs }
-
-            interaction_types = []
-            if (params.use_cis_interactions) {
-                interaction_types.push("cis")
-            }
-            if (params.use_trans_interactions) {
-                interaction_types.push("trans")
-            }
-
             hic_files
                 .map { tuple(it[0], it[1]) }
                 .join(plotting_resolutions)
                 .join(CONCAT.out.tsv)
-                .join(chrom_pairs.groupTuple())
                 .set { plotting_tasks }
 
             if (!params.plot_sig_interactions_cmap_lb) {
@@ -736,9 +721,7 @@ process PLOT_SIGNIFICANT {
         tuple val(sample),
               path(hic),
               val(resolution),
-              path(parquet),
-              val(chroms1),
-              val(chroms2)
+              path(tsv)
 
         val cmap_lb
         val cmap_ub
@@ -748,35 +731,18 @@ process PLOT_SIGNIFICANT {
               path("*.${params.plot_format}")
 
     shell:
-        chroms1_str=chroms1.join(" ")
-        chroms2_str=chroms2.join(" ")
+        plot_format="${params.plot_format}"
         '''
-        chroms1=(!{chroms1_str})
-        chroms2=(!{chroms2_str})
+        mkdir mpl
+        export MPLCONFIGDIR=mpl
 
-        commands=()
-        for i in "${!chroms1[@]}"; do
-            chrom1="${chroms1[$i]}"
-            chrom2="${chroms2[$i]}"
-
-            outname="!{sample}.$chrom1.$chrom2.!{params.plot_format}"
-
-            command=(
-                plot_significant_interactions.py \\
-                    '!{hic}' \\
-                    '!{parquet}' \\
-                    "$chrom1" \\
-                    "$chrom2" \\
-                    "$outname" \\
-                    --resolution='!{resolution}' \\
-                    --min-value='!{cmap_lb}' \\
-                    --max-value='!{cmap_ub}'
-            )
-
-            commands+=("${command[*]}")
-        done
-
-        printf '%s\\0' "${commands[@]}" |
-            xargs -0 -I '{}' -P '!{task.cpus}' bash -c '{}'
+        plot_significant_interactions.py \\
+            '!{hic}' \\
+            '!{tsv}' \\
+            '!{sample}' \\
+            --resolution '!{resolution}' \\
+            --plot-format '!{plot_format}' \\
+            --min-value '!{cmap_lb}' \\
+            --max-value '!{cmap_ub}'
         '''
 }
