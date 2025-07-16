@@ -14,7 +14,7 @@ This repository hosts a Nextflow workflow to identify statistically significant 
 
 ### Software requirements
 
-- Nextflow (at least version: v22.10.8. Pipeline was developed using v24.04.2)
+- Nextflow (at least version: v22.10.8. Pipeline was developed using v25.04.2)
 - Docker or Singularity/Apptainer
 
 ### Required input files
@@ -89,7 +89,7 @@ In addition to the mandatory parameters, the pipeline accepts the following para
 - **cytoband**: path to a [cytoband](https://software.broadinstitute.org/software/igv/cytoband) file. Used to mask centromeric regions.
 - **assembly_gaps**: path to a BED file with the list of assembly gaps/unmappable regions.
 
-Note that NCHG by default uses the `MAD-max` filter to remove bins with suspiciously high or low marginals, so providing the above files is usually not requirerd.
+Note that NCHG by default uses the `MAD-max` filter to remove bins with suspiciously low marginals, so providing the above files is usually not requirerd.
 
 - **mad_max**: cutoff used by NCHG when performing the `MAD-max` filtering.
 - **bad_bin_fraction**: bad bin fraction used by NCHG to discard domains overlapping with a high fraction of bad bins.
@@ -135,13 +135,13 @@ user@dev:/tmp$ nextflow run --max_cpus=8 \
                             https://github.com/paulsengroup/nchg-nf \
                             -with-singularity  # Replace this with -with-docker to use Docker instead
 
- N E X T F L O W   ~  version 24.04.2
+ N E X T F L O W   ~  version 25.04.2
 
-Launching `./main.nf` [golden_blackwell] DSL2 - revision: e923a03f8f
+Launching `./main.nf` [fabulous_turing] DSL2 - revision: fd37ba43c4
 
 -- PARAMETERS
 -- sample_sheet: samplesheet.tsv
--- outdir: results/
+-- outdir: data/results/
 -- publish_dir_mode: copy
 -- cytoband: null
 -- assembly_gaps: null
@@ -151,40 +151,58 @@ Launching `./main.nf` [golden_blackwell] DSL2 - revision: e923a03f8f
 -- log_ratio_cis: 1.5
 -- fdr_trans: 0.01
 -- log_ratio_trans: 1.5
+-- use_cis_interactions: true
+-- use_trans_interactions: true
 -- plot_format: png
 -- hic_tgt_resolution_plots: 500000
 -- plot_sig_interactions_cmap_lb: null
 -- plot_sig_interactions_cmap_ub: 2.0
 -- skip_expected_plots: false
 -- skip_sign_interaction_plots: false
-executor >  local (2)
-[03/3b02c4] SAMPLESHEET:CHECK_SYNTAX                 [100%] 1 of 1, cached: 1 ✔
-[da/c8ed7a] SAMPLESHEET:CHECK_FILES                  [100%] 1 of 1, cached: 1 ✔
-[97/828730] NCHG:GENERATE_MASK (example)             [100%] 1 of 1, cached: 1 ✔
-[3e/0ee8aa] NCHG:EXPECTED (example)                  [100%] 1 of 1, cached: 1 ✔
-[f2/084a7b] NCHG:GENERATE_CHROMOSOME_PAIRS (example) [100%] 2 of 2, cached: 2 ✔
-[ed/2b3e57] NCHG:DUMP_CHROM_SIZES (example)          [100%] 1 of 1, cached: 1 ✔
-[60/84727e] NCHG:COMPUTE (example (chr18:chrY))      [100%] 231 of 231, cached: 231 ✔
-[37/0fd95d] NCHG:MERGE (example (trans))             [100%] 2 of 2, cached: 2 ✔
-[af/f0ba9a] NCHG:FILTER (example (cis))              [100%] 2 of 2, cached: 2 ✔
-[6f/600f8c] NCHG:VIEW (example (cis))                [100%] 2 of 2, cached: 2 ✔
-[de/a0069a] NCHG:CONCAT (example)                    [100%] 1 of 1, cached: 1 ✔
-[66/880021] NCHG:PLOT_EXPECTED (example)             [100%] 1 of 1 ✔
-[9a/0075b8] NCHG:GET_HIC_PLOT_RESOLUTION (example)   [100%] 1 of 1, cached: 1 ✔
-[a3/779d15] NCHG:PLOT_SIGNIFICANT (example)          [100%] 1 of 1 ✔
-Completed at: 03-Jul-2024 18:48:25
-Duration    : 1m 42s
-CPU hours   : 0.6 (23.7% cached)
-Succeeded   : 2
-Cached      : 246
+executor >  local (250)
+[84/789e27] SAMPLESHEET:CHECK_SYNTAX                         [100%] 1 of 1 ✔
+[02/3ff9e7] SAMPLESHEET:CHECK_FILES                          [100%] 1 of 1 ✔
+[91/d0e6c6] NCHG:GENERATE_MASK (example)                     [100%] 1 of 1 ✔
+[ab/0ff3f5] NCHG:EXPECTED (example)                          [100%] 1 of 1 ✔
+[6a/191e76] NCHG:DUMP_CHROM_SIZES (example)                  [100%] 1 of 1 ✔
+[7c/2e8a9b] NCHG:PREPROCESS_DOMAINS (example)                [100%] 1 of 1 ✔
+[f6/9ac15e] NCHG:CARTESIAN_PRODUCT (example)                 [100%] 1 of 1 ✔
+[7c/c281cf] NCHG:GENERATE_CHROMOSOME_PAIRS (example (trans)) [100%] 2 of 2 ✔
+[ed/bf4af9] NCHG:COMPUTE (example [chr9:chr15])              [100%] 231 of 231 ✔
+[fd/f05b4e] NCHG:MERGE (example (cis))                       [100%] 2 of 2 ✔
+[0e/057edf] NCHG:FILTER (example (cis))                      [100%] 2 of 2 ✔
+[27/b64f64] NCHG:CONCAT (example)                            [100%] 2 of 2 ✔
+[37/ca3c33] NCHG:VIEW (example)                              [100%] 1 of 1 ✔
+[62/bc9193] NCHG:PLOT_EXPECTED (example)                     [100%] 1 of 1 ✔
+[46/eceb87] NCHG:GET_HIC_PLOT_RESOLUTION (example)           [100%] 1 of 1 ✔
+[3f/decbec] NCHG:PLOT_SIGNIFICANT (example)                  [100%] 1 of 1 ✔
 ```
 
 This will create a `data/results/` folder with the following files:
 
-- `example.filtered.tsv.gz` - TSV with the statistically significant interactions detected by NCHG.
-- `expected_values_example.cis.h5` - HDF5 file with the expected values computed by NCHG.
-- `plots/example/example.*.*.png` - Plots showing the log ratio computed by NCHG for each chromosome pair analyzed.
-- `plots/example/example_cis.png` - Plot showing the expected value profile computed by NCHG.
+```txt
+data/results
+└── example
+    ├── example.filtered.parquet
+    ├── example.filtered.tsv.gz
+    ├── example.parquet
+    ├── expected_values_example.h5
+    └── plots
+        ├── example.chr1.chr1.png
+        ├── example.chr1.chr2.png
+        ├── example.chr1.chr3.png
+        ...
+        ├── example_cis.png
+        └── example_trans.png
+
+3 directories, 220 files
+```
+
+- `example.parquet` - Parquet file with the output of `NCHG compute` (i.e., all genomic interactions before p-value correction).
+- `example.filtered.{parquet,tsv.gz}` - Parquet and TSV files with the statistically significant interactions detected by NCHG.
+- `expected_values_example.h5` - HDF5 file with the expected values computed by NCHG.
+- `plots/example.*.*.png` - Plots showing the log ratio computed by NCHG for each chromosome pair analyzed.
+- `plots/example_{cis,trans}.png` - Plots showing the expected value profile computed by NCHG.
 
 <details>
 <summary>Troubleshooting</summary>
@@ -196,7 +214,7 @@ If you get permission errors when using `-with-docker`:
 If you get an error similar to:
 
 ```txt
-Cannot find revision `v0.4.0` -- Make sure that it exists in the remote repository `https://github.com/paulsengroup/nchg-nf`
+Cannot find revision `v0.0.1` -- Make sure that it exists in the remote repository `https://github.com/paulsengroup/nchg-nf`
 ```
 
 try to remove folder `~/.nextflow/assets/paulsengroup/nchg-nf` before running the workflow
