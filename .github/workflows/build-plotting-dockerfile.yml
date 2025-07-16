@@ -7,14 +7,14 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/build-plotting*dockerfile.yml"
+      - ".github/workflows/build-plotting-dockerfile.yml"
       - ".github/workflows/build-dockerfile.yml"
-      - "containers/plotting*.Dockerfile"
+      - "containers/plotting__*.Dockerfile"
   pull_request:
     paths:
-      - ".github/workflows/build-plotting*dockerfile.yml"
+      - ".github/workflows/build-plotting-dockerfile.yml"
       - ".github/workflows/build-dockerfile.yml"
-      - "containers/plotting*.Dockerfile"
+      - "containers/plotting__*.Dockerfile"
 
 # https://stackoverflow.com/a/72408109
 concurrency:
@@ -26,7 +26,7 @@ jobs:
     name: Build plotting Dockerfile
     uses: paulsengroup/nchg-nf/.github/workflows/build-dockerfile.yml@main
     with:
-      dockerfile-glob: "containers/plotting*.Dockerfile"
+      dockerfile-glob: "containers/plotting__*.Dockerfile"
 
     permissions:
       contents: read
