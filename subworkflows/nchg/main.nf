@@ -173,12 +173,12 @@ workflow NCHG {
 
         MERGE.out.parquet
             .groupTuple()
-            .map { it-> tuple(it[0], 'unfiltered', it[2]) }
+            .map { tuple(it[0], 'unfiltered', it[2]) }
             .set { nchg_unfiltered_concat_tasks }
 
         FILTER.out.parquet
             .groupTuple()
-            .map { it-> tuple(it[0], 'filtered', it[2]) }
+            .map { tuple(it[0], 'filtered', it[2]) }
             .set { nchg_filtered_concat_tasks }
 
         nchg_unfiltered_concat_tasks
@@ -223,24 +223,33 @@ workflow NCHG {
                 .join(VIEW.out.tsv)
                 .set { plotting_tasks }
 
+            def plot_sig_interactions_cmap_lb = params.plot_sig_interactions_cmap_lb
             if (!params.plot_sig_interactions_cmap_lb) {
                 plot_sig_interactions_cmap_lb = Math.min(params.log_ratio_cis,
                                                          params.log_ratio_trans)
-            } else {
-                plot_sig_interactions_cmap_lb = params.plot_sig_interactions_cmap_lb
             }
 
-            plot_sig_interactions_cmap_ub = Math.max(plot_sig_interactions_cmap_lb,
-                                                     params.plot_sig_interactions_cmap_ub)
+            def plot_sig_interactions_cmap_ub = Math.max(plot_sig_interactions_cmap_lb,
+                                                         params.plot_sig_interactions_cmap_ub)
 
             PLOT_SIGNIFICANT(
                plotting_tasks,
                plot_sig_interactions_cmap_lb,
                plot_sig_interactions_cmap_ub
             )
+
+            PLOT_EXPECTED.out.plots
+                .mix(PLOT_SIGNIFICANT.out.plots)
+                .set { PLOTS }
+        } else {
+            Channel.empty()
+                .set { PLOTS }
         }
 
     emit:
+        expected = EXPECTED.out.h5
+        parquets = CONCAT.out.parquet
+        plots = PLOTS
         tsv = VIEW.out.tsv
 
 }
@@ -424,9 +433,6 @@ process GENERATE_CHROMOSOME_PAIRS {
 
 // TODO optimize: trans expected values can be computed in parallel
 process EXPECTED {
-    publishDir "${params.publish_dir}/${sample}/",
-        enabled: !!params.publish_dir,
-        mode: params.publish_dir_mode
     tag "$sample"
 
     input:
@@ -591,10 +597,6 @@ process FILTER {
 }
 
 process CONCAT {
-    publishDir "${params.publish_dir}/${sample}/",
-        enabled: !!params.publish_dir,
-        mode: params.publish_dir_mode
-
     label 'process_medium'
     tag "$sample"
 
@@ -625,10 +627,6 @@ process CONCAT {
 }
 
 process VIEW {
-    publishDir "${params.publish_dir}/${sample}/",
-        enabled: !!params.publish_dir,
-        mode: params.publish_dir_mode
-
     label 'process_medium'
     tag "$sample"
 
@@ -650,10 +648,6 @@ process VIEW {
 }
 
 process PLOT_EXPECTED {
-    publishDir "${params.publish_dir}/${sample}/plots/",
-        enabled: !!params.publish_dir,
-        mode: params.publish_dir_mode
-
     tag "$sample"
 
     input:
@@ -664,7 +658,8 @@ process PLOT_EXPECTED {
 
     output:
         tuple val(sample),
-              path("*.${params.plot_format}")
+              path("*.${params.plot_format}"),
+        emit: plots
 
     shell:
         plot_cis="cis" in interaction_types
@@ -729,10 +724,6 @@ process GET_HIC_PLOT_RESOLUTION {
 }
 
 process PLOT_SIGNIFICANT {
-    publishDir "${params.publish_dir}/${sample}/plots/",
-        enabled: !!params.publish_dir,
-        mode: params.publish_dir_mode
-
     label 'process_very_high'
     tag "$sample"
 
@@ -747,7 +738,8 @@ process PLOT_SIGNIFICANT {
 
     output:
         tuple val(sample),
-              path("*.${params.plot_format}")
+              path("*.${params.plot_format}"),
+        emit: plots
 
     shell:
         plot_format="${params.plot_format}"

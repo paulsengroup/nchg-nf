@@ -14,7 +14,7 @@ This repository hosts a Nextflow workflow to identify statistically significant 
 
 ### Software requirements
 
-- Nextflow (at least version: v22.10.8. Pipeline was developed using v25.04.2)
+- Nextflow (at least version: v25.04. Pipeline was developed using v25.04.6)
 - Docker or Singularity/Apptainer
 
 ### Required input files
@@ -131,8 +131,8 @@ user@dev:/tmp$ nextflow run --max_cpus=8 \
                             --max_memory=16.GB \
                             --max_time=2.h \
                             --sample_sheet=samplesheet.tsv \
-                            --outdir=data/results/ \
                             https://github.com/paulsengroup/nchg-nf \
+                            -output-dir data/results/ \
                             -with-singularity  # Replace this with -with-docker to use Docker instead
 
  N E X T F L O W   ~  version 25.04.2
@@ -141,7 +141,6 @@ Launching `./main.nf` [fabulous_turing] DSL2 - revision: fd37ba43c4
 
 -- PARAMETERS
 -- sample_sheet: samplesheet.tsv
--- outdir: data/results/
 -- publish_dir_mode: copy
 -- cytoband: null
 -- assembly_gaps: null
