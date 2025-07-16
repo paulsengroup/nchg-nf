@@ -12,7 +12,8 @@ on:
       - "main.nf"
       - "nextflow.config"
       - "bin/*.py"
-      - "config/ci.config"
+      - "conf/base.config"
+      - "conf/ci.config"
       - "subworkflows/**"
       - "test/samplesheets/*.tsv"
 
@@ -23,7 +24,8 @@ on:
       - "main.nf"
       - "nextflow.config"
       - "bin/*.py"
-      - "config/ci.config"
+      - "conf/base.config"
+      - "conf/ci.config"
       - "subworkflows/**"
       - "test/samplesheets/*.tsv"
 
@@ -117,7 +119,11 @@ jobs:
 
     strategy:
       matrix:
-        NXF_VER: ["22.10.8", "latest-stable"]
+        NXF_VER: ["25.04", "latest-stable"]
+
+    env:
+      HICTK_NO_TELEMETRY: "1"
+      NCHG_NO_TELEMETRY: "1"
 
     steps:
       - name: Checkout repo
@@ -146,12 +152,12 @@ jobs:
         run: |
           printf '%s\t%d\t%d' chr21 0 5000000 > mask.bed
 
-          nextflow run -c config/ci.config \
+          nextflow run -c conf/ci.config \
                        --sample="test" \
                        --hic_file="test/data/$TEST_MATRIX" \
                        --mask=mask.bed \
                        --resolution=100000 \
-                       --outdir=test/out/wo_samplesheet \
+                       -output-dir test/out/wo_samplesheet \
                        --max_cpus=$(nproc) \
                        .
 
@@ -159,9 +165,9 @@ jobs:
 
       - name: Test workflow (w/ samplesheet; single sample)
         run: |
-          nextflow run -c config/ci.config \
+          nextflow run -c conf/ci.config \
                        --sample_sheet=test/samplesheets/single_sample.tsv \
-                       --outdir=test/out/single_sample \
+                       -output-dir test/out/single_sample \
                        --max_cpus=$(nproc) \
                        .
 
@@ -169,9 +175,9 @@ jobs:
 
       - name: Test workflow (w/ samplesheet; multiple_samples)
         run: |
-          nextflow run -c config/ci.config \
+          nextflow run -c conf/ci.config \
                        --sample_sheet=test/samplesheets/multiple_samples.tsv \
-                       --outdir=test/out/multiple_samples \
+                       -output-dir test/out/multiple_samples \
                        --max_cpus=$(nproc) \
                        .
 
@@ -179,9 +185,9 @@ jobs:
 
       - name: Test workflow (w/ samplesheet; 1D domains)
         run: |
-          nextflow run -c config/ci.config \
+          nextflow run -c conf/ci.config \
                        --sample_sheet=test/samplesheets/1d_domains.tsv \
-                       --outdir=test/out/1d_domains \
+                       -output-dir test/out/1d_domains \
                        --max_cpus=$(nproc) \
                        .
 
@@ -189,9 +195,9 @@ jobs:
 
       - name: Test workflow (w/ samplesheet; 2D domains)
         run: |
-          nextflow run -c config/ci.config \
+          nextflow run -c conf/ci.config \
                        --sample_sheet=test/samplesheets/2d_domains.tsv \
-                       --outdir=test/out/2d_domains \
+                       -output-dir test/out/2d_domains \
                        --max_cpus=$(nproc) \
                        .
 

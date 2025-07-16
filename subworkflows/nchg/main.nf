@@ -173,12 +173,12 @@ workflow NCHG {
 
         MERGE.out.parquet
             .groupTuple()
-            .map { it-> tuple(it[0], 'unfiltered', it[2]) }
+            .map { tuple(it[0], 'unfiltered', it[2]) }
             .set { nchg_unfiltered_concat_tasks }
 
         FILTER.out.parquet
             .groupTuple()
-            .map { it-> tuple(it[0], 'filtered', it[2]) }
+            .map { tuple(it[0], 'filtered', it[2]) }
             .set { nchg_filtered_concat_tasks }
 
         nchg_unfiltered_concat_tasks
@@ -201,7 +201,8 @@ workflow NCHG {
         if (!params.skip_expected_plots) {
             PLOT_EXPECTED(
                 EXPECTED.out.h5,
-                interaction_types
+                interaction_types,
+                params.plot_format
             )
         }
 
@@ -223,24 +224,34 @@ workflow NCHG {
                 .join(VIEW.out.tsv)
                 .set { plotting_tasks }
 
+            def plot_sig_interactions_cmap_lb = params.plot_sig_interactions_cmap_lb
             if (!params.plot_sig_interactions_cmap_lb) {
                 plot_sig_interactions_cmap_lb = Math.min(params.log_ratio_cis,
                                                          params.log_ratio_trans)
-            } else {
-                plot_sig_interactions_cmap_lb = params.plot_sig_interactions_cmap_lb
             }
 
-            plot_sig_interactions_cmap_ub = Math.max(plot_sig_interactions_cmap_lb,
-                                                     params.plot_sig_interactions_cmap_ub)
+            def plot_sig_interactions_cmap_ub = Math.max(plot_sig_interactions_cmap_lb,
+                                                         params.plot_sig_interactions_cmap_ub)
 
             PLOT_SIGNIFICANT(
                plotting_tasks,
                plot_sig_interactions_cmap_lb,
-               plot_sig_interactions_cmap_ub
+               plot_sig_interactions_cmap_ub,
+               params.plot_format
             )
+
+            PLOT_EXPECTED.out.plots
+                .mix(PLOT_SIGNIFICANT.out.plots)
+                .set { PLOTS }
+        } else {
+            Channel.empty()
+                .set { PLOTS }
         }
 
     emit:
+        expected = EXPECTED.out.h5
+        parquets = CONCAT.out.parquet
+        plots = PLOTS
         tsv = VIEW.out.tsv
 
 }
@@ -265,7 +276,7 @@ process GENERATE_MASK {
               path("*.bed.gz"),
         emit: bed
 
-    shell:
+    script:
         opts=[]
         if (!mask.toString().isEmpty()) {
             opts.push(mask)
@@ -281,15 +292,15 @@ process GENERATE_MASK {
         opts=opts.join(" ")
 
         if (skip) {
-            '''
-            echo "" | gzip -9 > '__!{sample}.mask.bed.gz'
-            '''
+            """
+            echo "" | gzip -9 > __'$sample'.mask.bed.gz
+            """
         } else {
-            '''
+            """
             set -o pipefail
 
-            generate_bin_mask.py !{opts} | gzip -9 > '__!{sample}.mask.bed.gz'
-            '''
+            generate_bin_mask.py $opts | gzip -9 > __'$sample'.mask.bed.gz
+            """
         }
 }
 
@@ -307,18 +318,11 @@ process DUMP_CHROM_SIZES {
               path("*.chrom.sizes"),
         emit: tsv
 
-    shell:
-        '''
-        #!/usr/bin/env python3
-
-        import hictkpy
-
-        chroms = hictkpy.File("!{hic}", int("!{resolution}")).chromosomes()
-
-        with open("!{sample}.chrom.sizes", "w") as f:
-            for chrom, size in chroms.items():
-                print(f"{chrom}\\t{size}", file=f)
-        '''
+    script:
+        outname="${sample}.chrom.sizes"
+        """
+        hictk dump -t chroms '$hic' --resolution '$resolution' > '$outname'
+        """
 }
 
 process PREPROCESS_DOMAINS {
@@ -334,28 +338,28 @@ process PREPROCESS_DOMAINS {
               path("*.{zst,skip}"),
         emit: domains
 
-    shell:
+    script:
         outprefix="${sample}.domains"
-        '''
-        if [ '!{domains}' = '' ]; then
-          touch '!{outprefix}.skip'
+        """
+        if [ '$domains' = '' ]; then
+          touch '$outprefix'.skip
           exit 0
         fi
 
-        tmpfile='!{outprefix}.tmp'
+        tmpfile='$outprefix'.tmp
 
         set -o pipefail
-        preprocess_domains.py '!{domains}' | zstd -13 -o "$tmpfile"
+        preprocess_domains.py '$domains' | zstd -13 -o "\$tmpfile"
         set +o pipefail
 
-        num_cols="$(zstdcat "$tmpfile" | head -n 1 | wc -w)"
+        num_cols="\$(zstdcat "\$tmpfile" | head -n 1 | wc -w)"
 
-        if [ "$num_cols" -eq 6 ]; then
-          mv "$tmpfile" '!{outprefix}.bedpe.zst'
+        if [ "\$num_cols" -eq 6 ]; then
+          mv "\$tmpfile" '$outprefix'.bedpe.zst
         else
-          mv "$tmpfile" '!{outprefix}.bed.zst'
+          mv "\$tmpfile" '$outprefix'.bed.zst
         fi
-        '''
+        """
 }
 
 process CARTESIAN_PRODUCT {
@@ -372,21 +376,21 @@ process CARTESIAN_PRODUCT {
               path("*.{bedpe.zst,skip}"),
         emit: domains
 
-    shell:
+    script:
         outprefix="${sample}.domains.ok"
-        '''
+        """
         set -o pipefail
 
-        if [[ '!{domains}' == *.skip ]]; then
-          touch '!{outprefix}.skip'
+        if [[ '$domains' == *.skip ]]; then
+          touch '$outprefix'.skip
           exit 0
         fi
 
         NCHG cartesian-product \\
-            --chrom-sizes '!{chrom_sizes}' \\
-            <(zstd -dcf '!{domains}') |
-            zstd -13 -o '!{outprefix}.bedpe.zst'
-        '''
+            --chrom-sizes '$chrom_sizes' \\
+            <(zstd -dcf '$domains') |
+            zstd -13 -o '$outprefix'.bedpe.zst
+        """
 }
 
 process GENERATE_CHROMOSOME_PAIRS {
@@ -403,7 +407,7 @@ process GENERATE_CHROMOSOME_PAIRS {
     output:
         stdout emit: tsv
 
-    shell:
+    script:
         opts=[
             "--resolution='${resolution}'",
             "--interaction-type='${interaction_type}'"
@@ -414,19 +418,16 @@ process GENERATE_CHROMOSOME_PAIRS {
         }
 
         opts=opts.join(" ")
-        '''
+        """
         generate_chromosome_pairs.py \\
-            '!{sample}' \\
-            '!{hic}' \\
-            !{opts}
-        '''
+            '$sample' \\
+            '$hic' \\
+            $opts
+        """
 }
 
 // TODO optimize: trans expected values can be computed in parallel
 process EXPECTED {
-    publishDir "${params.publish_dir}/${sample}/",
-        enabled: !!params.publish_dir,
-        mode: params.publish_dir_mode
     tag "$sample"
 
     input:
@@ -443,7 +444,7 @@ process EXPECTED {
               path(outname),
         emit: h5
 
-    shell:
+    script:
         opts=[
             "--resolution='${resolution}'",
             "--mad-max='${mad_max}'"
@@ -463,20 +464,20 @@ process EXPECTED {
         outname="expected_values_${sample}${suffix}.h5"
         opts=opts.join(" ")
 
-        '''
-        mkdir tmp/
-        bin_mask="$(mktemp -p ./tmp)"
-
+        """
         trap 'rm -rf ./tmp/' EXIT
 
-        zcat -f '!{bin_mask}' > "$bin_mask"
+        mkdir tmp/
+        bin_mask_plain="\$(mktemp -p ./tmp)"
+
+        zcat -f '$bin_mask' > "\$bin_mask_plain"
 
         NCHG expected \\
-            '!{hic}' \\
-            --output='!{outname}' \\
-            --bin-mask="$bin_mask" \\
-            !{opts}
-        '''
+            '$hic' \\
+            --output='$outname' \\
+            --bin-mask="\$bin_mask_plain" \\
+            $opts
+        """
 }
 
 process COMPUTE{
@@ -501,7 +502,7 @@ process COMPUTE{
               path("*.parquet", optional: true),
         emit: parquet
 
-    shell:
+    script:
         outname="${sample}.${chrom1}.${chrom2}.parquet"
 
         opts=[]
@@ -511,25 +512,25 @@ process COMPUTE{
         }
 
         opts=opts.join(" ")
-        '''
+        """
         set -o pipefail
 
-        if [ -n '!{domains}' ]; then
-            zstdcat -f '!{domains}' > domains.bed
+        if [ -n '$domains' ]; then
+            zstdcat -f '$domains' > domains.bed
         fi
 
         NCHG compute \\
-            '!{hic}' \\
-            'out/!{outname}' \\
-            --resolution='!{resolution}' \\
-            --chrom1='!{chrom1}' \\
-            --chrom2='!{chrom2}' \\
-            --expected-values='!{expected_values}' \\
-            --bad-bin-fraction='!{bad_bin_fraction}' \\
-            !{opts}
+            '$hic' \\
+            out/'$outname' \\
+            --resolution='$resolution' \\
+            --chrom1='$chrom1' \\
+            --chrom2='$chrom2' \\
+            --expected-values='$expected_values' \\
+            --bad-bin-fraction='$bad_bin_fraction' \\
+            $opts
 
-        mv 'out/!{outname}' '!{outname}'
-        '''
+        mv out/'$outname' '$outname'
+        """
 }
 
 process MERGE {
@@ -549,15 +550,15 @@ process MERGE {
               path(outname),
         emit: parquet
 
-    shell:
+    script:
         input_prefix="${sample}"
         outname="${sample}.${interaction_type}.parquet"
-        '''
-        NCHG merge --input-prefix='!{input_prefix}' \\
-            --output '!{outname}' \\
+        """
+        NCHG merge --input-prefix='$input_prefix' \\
+            --output '$outname' \\
             --ignore-report-file \\
-            --threads='!{task.cpus}'
-        '''
+            --threads='${task.cpus}'
+        """
 }
 
 process FILTER {
@@ -578,23 +579,19 @@ process FILTER {
               path(outname),
         emit: parquet
 
-    shell:
+    script:
         outname="${sample}.${interaction_type}.filtered.parquet"
-        '''
+        """
         NCHG filter \\
-            '!{parquet}' \\
-            '!{outname}' \\
-            --fdr='!{fdr}' \\
-            --log-ratio='!{log_ratio}' \\
-            --threads='!{task.cpus}'
-        '''
+            '$parquet' \\
+            '$outname' \\
+            --fdr='$fdr' \\
+            --log-ratio='$log_ratio' \\
+            --threads='${task.cpus}'
+        """
 }
 
 process CONCAT {
-    publishDir "${params.publish_dir}/${sample}/",
-        enabled: !!params.publish_dir,
-        mode: params.publish_dir_mode
-
     label 'process_medium'
     tag "$sample"
 
@@ -609,26 +606,24 @@ process CONCAT {
               path("*.parquet"),
         emit: parquet
 
-    shell:
+    script:
         outname=(type == 'filtered') ?
             "${sample}.filtered.parquet" :
             "${sample}.parquet"
-        '''
+        """
         mkdir tmp
+        trap 'rm -rf ./tmp/' EXIT
+
         TMPDIR=./tmp/ \\
         NCHG merge \\
           --input-files *.parquet \\
-          --output '!{outname}' \\
+          --output '$outname' \\
           --ignore-report-file \\
-          --threads !{task.cpus}
-        '''
+          --threads='${task.cpus}'
+        """
 }
 
 process VIEW {
-    publishDir "${params.publish_dir}/${sample}/",
-        enabled: !!params.publish_dir,
-        mode: params.publish_dir_mode
-
     label 'process_medium'
     tag "$sample"
 
@@ -641,19 +636,15 @@ process VIEW {
               path("*.tsv.gz"),
         emit: tsv
 
-    shell:
+    script:
         tsv="${parquet.baseName}.tsv.gz"
-        '''
-        NCHG view '!{parquet}' |
-            pigz -9 -p !{task.cpus} > '!{tsv}'
-        '''
+        """
+        NCHG view '$parquet' |
+            pigz -9 -p ${task.cpus} > '$tsv'
+        """
 }
 
 process PLOT_EXPECTED {
-    publishDir "${params.publish_dir}/${sample}/plots/",
-        enabled: !!params.publish_dir,
-        mode: params.publish_dir_mode
-
     tag "$sample"
 
     input:
@@ -661,30 +652,34 @@ process PLOT_EXPECTED {
               path(h5)
 
         val interaction_types
+        val plot_format
 
     output:
         tuple val(sample),
-              path("*.${params.plot_format}")
+              path("*.${params.plot_format}"),
+        emit: plots
 
-    shell:
+    script:
         plot_cis="cis" in interaction_types
         plot_trans="trans" in interaction_types
-        '''
-        if [[ !{plot_cis} == true ]]; then
+        outname_cis="${sample}_cis.${plot_format}"
+        outname_trans="${sample}_trans.${plot_format}"
+        """
+        if [[ '$plot_cis' == true ]]; then
             plot_expected_values.py \\
-                '!{h5}' \\
-                '!{sample}_cis.!{params.plot_format}' \\
+                '$h5' \\
+                '$outname_cis' \\
                 --yscale-log \\
                 --plot-cis
         fi
 
-        if [[ !{plot_trans} == true ]]; then
+        if [[ '$plot_trans' == true ]]; then
             plot_expected_values.py \\
-                '!{h5}' \\
-                '!{sample}_trans.!{params.plot_format}' \\
+                '$h5' \\
+                '$outname_trans' \\
                 --plot-trans
         fi
-        '''
+        """
 }
 
 process GET_HIC_PLOT_RESOLUTION {
@@ -701,18 +696,18 @@ process GET_HIC_PLOT_RESOLUTION {
     output:
         stdout emit: tsv
 
-    shell:
-        '''
+    script:
+        """
         #!/usr/bin/env python3
 
         import hictkpy
 
-        best_res = int("!{resolution}")
+        best_res = int("$resolution")
+        tgt_res = int("$tgt_resolution")
+        sample = "$sample"
 
         try:
-            resolutions = hictkpy.MultiResFile("!{hic}").resolutions()
-
-            tgt_res = int("!{tgt_resolution}")
+            resolutions = hictkpy.MultiResFile("$hic").resolutions()
 
             for res in resolutions:
                 delta1 = abs(res - tgt_res)
@@ -724,15 +719,11 @@ process GET_HIC_PLOT_RESOLUTION {
         except RuntimeError:
             pass
         finally:
-            print(f"!{sample}\\t{best_res}")
-        '''
+            print(f"{sample}\\t{best_res}")
+        """
 }
 
 process PLOT_SIGNIFICANT {
-    publishDir "${params.publish_dir}/${sample}/plots/",
-        enabled: !!params.publish_dir,
-        mode: params.publish_dir_mode
-
     label 'process_very_high'
     tag "$sample"
 
@@ -744,25 +735,27 @@ process PLOT_SIGNIFICANT {
 
         val cmap_lb
         val cmap_ub
+        val plot_format
 
     output:
         tuple val(sample),
-              path("*.${params.plot_format}")
+              path("*.${params.plot_format}"),
+        emit: plots
 
-    shell:
-        plot_format="${params.plot_format}"
-        '''
-        mkdir mpl
-        export MPLCONFIGDIR=mpl
+    script:
+        """
+        export MPLCONFIGDIR=./mpl
+        trap "rm -rf '\$MPLCONFIGDIR'" EXIT
+        mkdir "\$MPLCONFIGDIR"
 
         plot_significant_interactions.py \\
-            '!{hic}' \\
-            '!{tsv}' \\
-            '!{sample}' \\
-            --resolution '!{resolution}' \\
-            --plot-format '!{plot_format}' \\
-            --min-value '!{cmap_lb}' \\
-            --max-value '!{cmap_ub}' \\
-            --nproc '!{task.cpus}'
-        '''
+            '$hic' \\
+            '$tsv' \\
+            '$sample' \\
+            --resolution '$resolution' \\
+            --plot-format '$plot_format' \\
+            --min-value '$cmap_lb' \\
+            --max-value '$cmap_ub' \\
+            --nproc '${task.cpus}'
+        """
 }

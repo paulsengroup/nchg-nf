@@ -2,24 +2,24 @@
 //
 // SPDX-License-Identifier: MIT
 
-def strip_resolution_from_cooler_uri(uri) {
+Path strip_resolution_from_cooler_uri(uri) {
     file(uri.replaceFirst(/::\/resolutions\/\d+$/, ""), checkIfExists: true)
 }
 
 // Workaround for optional input files: https://github.com/nextflow-io/nextflow/issues/1694
-def make_optional_input(path) {
+List<Path> make_optional_input(path) {
     if (path?.trim()) {
         return [file(path)]
     }
     return []
 }
 
-def parse_sample_sheet_row(row) {
-    hic_fname = strip_resolution_from_cooler_uri(row.hic_file)
-    files = [hic_fname]
+Tuple<Path> parse_sample_sheet_row(row) {
+    def Path hic_fname = strip_resolution_from_cooler_uri(row.hic_file)
+    def List<Path> files = [hic_fname]
 
-    domains = make_optional_input(row.domains)
-    mask = make_optional_input(row.mask)
+    def List<Path> domains = make_optional_input(row.domains)
+    def List<Path> mask = make_optional_input(row.mask)
 
     tuple(row.sample,
           files,
@@ -67,9 +67,9 @@ workflow SAMPLESHEET {
         sample_sheet
             .splitCsv(sep: "\t", header: true)
             .map {
-                    it = parse_sample_sheet_row(it)
-                    // Concatenate path to coolers and optional files
-                    it[1] + it[2] + it[3]
+                   def row = parse_sample_sheet_row(it)
+                   // Concatenate path to coolers and optional files
+                   row[1] + row[2] + row[3]
             }
             .flatten()
             .unique()
@@ -82,7 +82,7 @@ workflow SAMPLESHEET {
         )
 
     emit:
-        tsv = CHECK_FILES.out.tsv
+        sample_sheet = CHECK_FILES.out.tsv
 
 }
 
@@ -101,23 +101,23 @@ process GENERATE {
     output:
         path "sample_sheet.tsv", emit: tsv
 
-    shell:
-        '''
-        for param in '!{sample}' '!{hic_file}' '!{resolution}'; do
-            if [[ "$param" == 'null' ]]; then
+    script:
+        """
+        for param in '$sample' '$hic_file' '$resolution'; do
+            if [[ "\$param" == 'null' ]]; then
                 2>&1 echo 'Parameters sample, hic_file, and resolution are required when no samplesheet is provided!'
-                2>&1 echo "sample='!{sample}'; hic_file='!{hic_file}'; resolution='!{resolution}'"
+                2>&1 echo "sample='$sample'; hic_file='$hic_file'; resolution='$resolution'"
                 exit 1
             fi
         done
 
         printf 'sample\\thic_file\\tresolution\\tdomains\\tmask\\n' > sample_sheet.tsv
-        printf '%s\\t%s\\t%s\\t%s\\t%s\\n' '!{sample}' \\
-                                 '!{hic_file}' \\
-                                 '!{resolution}' \\
-                                 '!{domains}' \\
-                                 '!{mask}' >> sample_sheet.tsv
-        '''
+        printf '%s\\t%s\\t%s\\t%s\\t%s\\n' '$sample' \\
+                                 '$hic_file' \\
+                                 '$resolution' \\
+                                 '$domains' \\
+                                 '$mask' >> sample_sheet.tsv
+        """
 }
 
 process CHECK_SYNTAX {
@@ -131,10 +131,10 @@ process CHECK_SYNTAX {
     output:
         path "${sample_sheet}", includeInputs: true, emit: tsv
 
-    shell:
-        '''
-        parse_samplesheet.py --detached '!{sample_sheet}' > /dev/null
-        '''
+    script:
+        """
+        parse_samplesheet.py --detached '$sample_sheet' > /dev/null
+        """
 }
 
 process CHECK_FILES {
@@ -149,8 +149,8 @@ process CHECK_FILES {
     output:
         path "*.ok", emit: tsv
 
-    shell:
-        '''
-        parse_samplesheet.py '!{sample_sheet}' > '!{sample_sheet}.ok'
-        '''
+    script:
+        """
+        parse_samplesheet.py '$sample_sheet' > '$sample_sheet'.ok
+        """
 }
