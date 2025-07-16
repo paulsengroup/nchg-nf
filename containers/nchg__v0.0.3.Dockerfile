@@ -4,7 +4,7 @@
 
 ARG CONTAINER_VERSION
 
-FROM ghcr.io/paulsengroup/nchg:0.0.3 AS base
+FROM ghcr.io/paulsengroup/nchg:0.0.4 AS base
 
 ARG CONTAINER_TITLE
 ARG CONTAINER_VERSION
