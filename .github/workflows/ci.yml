@@ -121,6 +121,10 @@ jobs:
       matrix:
         NXF_VER: ["25.04", "latest-stable"]
 
+    env:
+      HICTK_NO_TELEMETRY: "1"
+      NCHG_NO_TELEMETRY: "1"
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
