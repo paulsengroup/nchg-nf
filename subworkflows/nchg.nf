@@ -171,12 +171,31 @@ workflow NCHG {
             nchg_filter_tasks
         )
 
-        VIEW(
-            FILTER.out.parquet
-        )
+        MERGE.out.parquet
+            .groupTuple()
+            .map { it-> tuple(it[0], 'unfiltered', it[2]) }
+            .set { nchg_unfiltered_concat_tasks }
+
+        FILTER.out.parquet
+            .groupTuple()
+            .map { it-> tuple(it[0], 'filtered', it[2]) }
+            .set { nchg_filtered_concat_tasks }
+
+        nchg_unfiltered_concat_tasks
+            .mix(nchg_filtered_concat_tasks)
+            .set { nchg_concat_tasks }
 
         CONCAT(
-            VIEW.out.groupTuple()
+            nchg_concat_tasks
+        )
+
+        CONCAT.out.parquet
+            .filter { it[1] == 'filtered' }
+            .map { tuple(it[0], it[2]) }
+            .set { nchg_view_tasks }
+
+        VIEW(
+            nchg_view_tasks
         )
 
         if (!params.skip_expected_plots) {
@@ -201,7 +220,7 @@ workflow NCHG {
             hic_files
                 .map { tuple(it[0], it[1]) }
                 .join(plotting_resolutions)
-                .join(CONCAT.out.tsv)
+                .join(VIEW.out.tsv)
                 .set { plotting_tasks }
 
             if (!params.plot_sig_interactions_cmap_lb) {
@@ -222,7 +241,7 @@ workflow NCHG {
         }
 
     emit:
-        tsv = CONCAT.out.tsv
+        tsv = VIEW.out.tsv
 
 }
 
@@ -405,7 +424,7 @@ process GENERATE_CHROMOSOME_PAIRS {
 
 // TODO optimize: trans expected values can be computed in parallel
 process EXPECTED {
-    publishDir params.publish_dir,
+    publishDir "${params.publish_dir}/${sample}/",
         enabled: !!params.publish_dir,
         mode: params.publish_dir_mode
     tag "$sample"
@@ -534,7 +553,8 @@ process MERGE {
         input_prefix="${sample}"
         outname="${sample}.${interaction_type}.parquet"
         '''
-        NCHG merge '!{input_prefix}' '!{outname}' \\
+        NCHG merge --input-prefix='!{input_prefix}' \\
+            --output '!{outname}' \\
             --ignore-report-file \\
             --threads='!{task.cpus}'
         '''
@@ -570,68 +590,67 @@ process FILTER {
         '''
 }
 
-process VIEW {
-    tag "$sample ($interaction_type)"
-
-    input:
-        tuple val(sample),
-              val(interaction_type),
-              path(parquet)
-
-    output:
-        tuple val(sample),
-              val(interaction_type),
-              path(outname),
-        emit: tsv
-
-    shell:
-        outname="${sample}.${interaction_type}.filtered.tsv.gz"
-        '''
-        set -o pipefail
-
-        NCHG view '!{parquet}' |
-            pigz -9 -p !{task.cpus} > '!{outname}'
-        '''
-}
-
 process CONCAT {
-    publishDir params.publish_dir,
+    publishDir "${params.publish_dir}/${sample}/",
         enabled: !!params.publish_dir,
         mode: params.publish_dir_mode
 
+    label 'process_medium'
     tag "$sample"
 
     input:
         tuple val(sample),
-              val(interaction_types),
-              path(tsvs)
+              val(type),
+              path(parquets)
 
     output:
         tuple val(sample),
-              path(outname),
+              val(type),
+              path("*.parquet"),
+        emit: parquet
+
+    shell:
+        outname=(type == 'filtered') ?
+            "${sample}.filtered.parquet" :
+            "${sample}.parquet"
+        '''
+        mkdir tmp
+        TMPDIR=./tmp/ \\
+        NCHG merge \\
+          --input-files *.parquet \\
+          --output '!{outname}' \\
+          --ignore-report-file \\
+          --threads !{task.cpus}
+        '''
+}
+
+process VIEW {
+    publishDir "${params.publish_dir}/${sample}/",
+        enabled: !!params.publish_dir,
+        mode: params.publish_dir_mode
+
+    label 'process_medium'
+    tag "$sample"
+
+    input:
+        tuple val(sample),
+              path(parquet)
+
+    output:
+        tuple val(sample),
+              path("*.tsv.gz"),
         emit: tsv
 
     shell:
-        outname="${sample}.filtered.tsv.gz"
-        tsvs_str=tsvs.join(" ")
+        tsv="${parquet.baseName}.tsv.gz"
         '''
-
-        # Write the file header
-        zcat '!{tsvs[0]}' |
-            head -n 1 |
-            pigz -9 > '!{outname}'
-
-        for f in !{tsvs_str}; do
-            # Skip file headers
-            zcat "$f" | tail -n +2
-        done |
-            sort -k1,1V -k2,2n -k4,4V -k5,5n |
-            pigz -9 -p !{task.cpus} >> '!{outname}'
+        NCHG view '!{parquet}' |
+            pigz -9 -p !{task.cpus} > '!{tsv}'
         '''
 }
 
 process PLOT_EXPECTED {
-    publishDir "${params.publish_dir}/plots/${sample}",
+    publishDir "${params.publish_dir}/${sample}/plots/",
         enabled: !!params.publish_dir,
         mode: params.publish_dir_mode
 
@@ -710,7 +729,7 @@ process GET_HIC_PLOT_RESOLUTION {
 }
 
 process PLOT_SIGNIFICANT {
-    publishDir "${params.publish_dir}/plots/${sample}",
+    publishDir "${params.publish_dir}/${sample}/plots/",
         enabled: !!params.publish_dir,
         mode: params.publish_dir_mode
 
