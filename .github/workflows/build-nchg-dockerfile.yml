@@ -7,14 +7,14 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/build-nchg*dockerfile.yml"
+      - ".github/workflows/build-nchg-dockerfile.yml"
       - ".github/workflows/build-dockerfile.yml"
-      - "containers/nchg*.Dockerfile"
+      - "containers/nchg__*.Dockerfile"
   pull_request:
     paths:
-      - ".github/workflows/build-nchg*dockerfile.yml"
+      - ".github/workflows/build-nchg-dockerfile.yml"
       - ".github/workflows/build-dockerfile.yml"
-      - "containers/nchg*.Dockerfile"
+      - "containers/nchg__*.Dockerfile"
 
 # https://stackoverflow.com/a/72408109
 concurrency:
@@ -26,7 +26,7 @@ jobs:
     name: Build NCHG Dockerfile
     uses: paulsengroup/nchg-nf/.github/workflows/build-dockerfile.yml@main
     with:
-      dockerfile-glob: "containers/nchg*.Dockerfile"
+      dockerfile-glob: "containers/nchg__*.Dockerfile"
 
     permissions:
       contents: read
