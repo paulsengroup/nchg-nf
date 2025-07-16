@@ -5,9 +5,10 @@
 
 import argparse
 import pathlib
+import re
 import sys
 from collections import namedtuple
-from typing import Tuple, Union
+from typing import Union
 
 import hictkpy
 import pandas as pd
@@ -54,14 +55,14 @@ def file_uri_basename(uri: str) -> str:
     return f"{name}::{suffix}"
 
 
-def check_sample_ids(df: pd.DataFrame):
-    # Look for empty/missing sample IDs
+def detect_missing_sample_ids(df: pd.DataFrame):
     invalid_ids_mask = (df["sample"].str.strip().str.len() == 0) | (df["sample"].isnull())
     if invalid_ids_mask.sum() != 0:
         affected_rows = "\n- ".join((str(i + 1) for i, invalid in enumerate(invalid_ids_mask) if invalid))
         raise RuntimeError(f"Found {invalid_ids_mask.sum()} missing sample ID(s).\nAffected row(s):\n- {affected_rows}")
 
-    # Look for duplicate sample IDs
+
+def detect_duplicate_sample_ids(df: pd.DataFrame):
     df1 = df.groupby("sample").count()
     duplicates = df1.loc[df1[EXPECTED_COLUMNS[1]] != 1, EXPECTED_COLUMNS[1]]
     if len(duplicates) != 0:
@@ -69,6 +70,27 @@ def check_sample_ids(df: pd.DataFrame):
             (f"{sample}: {num_duplicates} entries" for sample, num_duplicates in duplicates.iteritems())
         )
         raise RuntimeError(f"Found {len(duplicates)} rows with duplicate sample IDs:\n - {affected_samples}")
+
+
+def detect_invalid_sample_ids(df: pd.DataFrame):
+    pattern = re.compile(r"[a-zA-Z0-9_\-.]+")
+    invalid_samples = []
+    for sample in df["sample"]:
+        if pattern.fullmatch(sample) is None:
+            invalid_samples.append(sample)
+
+    if len(invalid_samples) != 0:
+        invalid_samples_str = "\n - ".join(invalid_samples)
+        raise RuntimeError(
+            f"Found {len(invalid_samples)} invalid sample ID(s):\n - {invalid_samples_str}\n"
+            "Sample IDs should only contain alphanumeric ASCII characters, ., _, and -."
+        )
+
+
+def check_sample_ids(df: pd.DataFrame):
+    detect_missing_sample_ids(df)
+    detect_duplicate_sample_ids(df)
+    detect_invalid_sample_ids(df)
 
 
 def check_column_is_integral(col: pd.Series, col_name: Union[str, None] = None):
