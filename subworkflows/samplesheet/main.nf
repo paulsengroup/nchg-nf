@@ -101,23 +101,23 @@ process GENERATE {
     output:
         path "sample_sheet.tsv", emit: tsv
 
-    shell:
-        '''
-        for param in '!{sample}' '!{hic_file}' '!{resolution}'; do
-            if [[ "$param" == 'null' ]]; then
+    script:
+        """
+        for param in '$sample' '$hic_file' '$resolution'; do
+            if [[ "\$param" == 'null' ]]; then
                 2>&1 echo 'Parameters sample, hic_file, and resolution are required when no samplesheet is provided!'
-                2>&1 echo "sample='!{sample}'; hic_file='!{hic_file}'; resolution='!{resolution}'"
+                2>&1 echo "sample='$sample'; hic_file='$hic_file'; resolution='$resolution'"
                 exit 1
             fi
         done
 
         printf 'sample\\thic_file\\tresolution\\tdomains\\tmask\\n' > sample_sheet.tsv
         printf '%s\\t%s\\t%s\\t%s\\t%s\\n' '!{sample}' \\
-                                 '!{hic_file}' \\
-                                 '!{resolution}' \\
-                                 '!{domains}' \\
-                                 '!{mask}' >> sample_sheet.tsv
-        '''
+                                 '$hic_file' \\
+                                 '$resolution' \\
+                                 '$domains' \\
+                                 '$mask' >> sample_sheet.tsv
+        """
 }
 
 process CHECK_SYNTAX {
@@ -131,10 +131,10 @@ process CHECK_SYNTAX {
     output:
         path "${sample_sheet}", includeInputs: true, emit: tsv
 
-    shell:
-        '''
-        parse_samplesheet.py --detached '!{sample_sheet}' > /dev/null
-        '''
+    script:
+        """
+        parse_samplesheet.py --detached '$sample_sheet' > /dev/null
+        """
 }
 
 process CHECK_FILES {
@@ -149,8 +149,8 @@ process CHECK_FILES {
     output:
         path "*.ok", emit: tsv
 
-    shell:
-        '''
-        parse_samplesheet.py '!{sample_sheet}' > '!{sample_sheet}.ok'
-        '''
+    script:
+        """
+        parse_samplesheet.py '$sample_sheet' > '$sample_sheet'.ok
+        """
 }
