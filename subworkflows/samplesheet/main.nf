@@ -112,7 +112,7 @@ process GENERATE {
         done
 
         printf 'sample\\thic_file\\tresolution\\tdomains\\tmask\\n' > sample_sheet.tsv
-        printf '%s\\t%s\\t%s\\t%s\\t%s\\n' '!{sample}' \\
+        printf '%s\\t%s\\t%s\\t%s\\t%s\\n' '$sample' \\
                                  '$hic_file' \\
                                  '$resolution' \\
                                  '$domains' \\
