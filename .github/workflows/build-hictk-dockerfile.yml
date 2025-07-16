@@ -1,20 +1,20 @@
-# Copyright (c) 2024 Roberto Rossini (roberros@uio.no)
+# Copyright (c) 2025 Roberto Rossini (roberros@uio.no)
 # SPDX-License-Identifier: MIT
 
-name: Build hictkpy Dockerfile
+name: Build hictk Dockerfile
 
 on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/build-hictkpy-dockerfile.yml"
+      - ".github/workflows/build-hictk-dockerfile.yml"
       - ".github/workflows/build-dockerfile.yml"
-      - "containers/hictkpy__*.Dockerfile"
+      - "containers/hictk__*.Dockerfile"
   pull_request:
     paths:
-      - ".github/workflows/build-hictkpy-dockerfile.yml"
+      - ".github/workflows/build-hictk-dockerfile.yml"
       - ".github/workflows/build-dockerfile.yml"
-      - "containers/hictkpy__*.Dockerfile"
+      - "containers/hictk__*.Dockerfile"
 
 # https://stackoverflow.com/a/72408109
 concurrency:
@@ -22,11 +22,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-hictkpy-dockerfile:
-    name: Build hictkpy Dockerfile
+  build-hictk-dockerfile:
+    name: Build hictk Dockerfile
     uses: paulsengroup/nchg-nf/.github/workflows/build-dockerfile.yml@main
     with:
-      dockerfile-glob: "containers/hictkpy__*.Dockerfile"
+      dockerfile-glob: "containers/hictk__*.Dockerfile"
 
     permissions:
       contents: read
