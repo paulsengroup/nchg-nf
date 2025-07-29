@@ -299,7 +299,7 @@ process GENERATE_MASK {
             """
             set -o pipefail
 
-            generate_bin_mask.py $opts | gzip -9 > __'$sample'.mask.bed.gz
+            nchg_nf_generate_bin_mask.py $opts | gzip -9 > __'$sample'.mask.bed.gz
             """
         }
 }
@@ -349,7 +349,7 @@ process PREPROCESS_DOMAINS {
         tmpfile='$outprefix'.tmp
 
         set -o pipefail
-        preprocess_domains.py '$domains' | zstd -13 -o "\$tmpfile"
+        nchg_nf_preprocess_domains.py '$domains' | zstd -13 -o "\$tmpfile"
         set +o pipefail
 
         num_cols="\$(zstdcat "\$tmpfile" | head -n 1 | wc -w)"
@@ -419,7 +419,7 @@ process GENERATE_CHROMOSOME_PAIRS {
 
         opts=opts.join(" ")
         """
-        generate_chromosome_pairs.py \\
+        nchg_nf_generate_chromosome_pairs.py \\
             '$sample' \\
             '$hic' \\
             $opts
@@ -666,7 +666,7 @@ process PLOT_EXPECTED {
         outname_trans="${sample}_trans.${plot_format}"
         """
         if [[ '$plot_cis' == true ]]; then
-            plot_expected_values.py \\
+            nchg_nf_plot_expected_values.py \\
                 '$h5' \\
                 '$outname_cis' \\
                 --yscale-log \\
@@ -674,7 +674,7 @@ process PLOT_EXPECTED {
         fi
 
         if [[ '$plot_trans' == true ]]; then
-            plot_expected_values.py \\
+            nchg_nf_plot_expected_values.py \\
                 '$h5' \\
                 '$outname_trans' \\
                 --plot-trans
@@ -748,7 +748,7 @@ process PLOT_SIGNIFICANT {
         trap "rm -rf '\$MPLCONFIGDIR'" EXIT
         mkdir "\$MPLCONFIGDIR"
 
-        plot_significant_interactions.py \\
+        nchg_nf_plot_significant_interactions.py \\
             '$hic' \\
             '$tsv' \\
             '$sample' \\

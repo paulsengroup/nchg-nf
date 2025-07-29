@@ -133,7 +133,7 @@ process CHECK_SYNTAX {
 
     script:
         """
-        parse_samplesheet.py --detached '$sample_sheet' > /dev/null
+        nchg_nf_parse_samplesheet.py --detached '$sample_sheet' > /dev/null
         """
 }
 
@@ -151,6 +151,6 @@ process CHECK_FILES {
 
     script:
         """
-        parse_samplesheet.py '$sample_sheet' > '$sample_sheet'.ok
+        nchg_nf_parse_samplesheet.py '$sample_sheet' > '$sample_sheet'.ok
         """
 }
