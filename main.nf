@@ -58,10 +58,28 @@ workflow {
 
         NCHG(
             SAMPLESHEET.out.sample_sheet,
+            // masking
             params.mad_max,
             params.bad_bin_fraction,
             params.cytoband,
-            params.assembly_gaps
+            params.assembly_gaps,
+            // cis
+            params.use_cis_interactions,
+            params.fdr_cis,
+            params.log_ratio_cis,
+            // trans
+            params.use_trans_interactions,
+            params.fdr_trans,
+            params.log_ratio_trans,
+            // plotting
+            params.skip_expected_plots,
+            params.skip_sign_interaction_plots,
+            params.hic_tgt_resolution_plots,
+            params.plot_sig_interactions_cmap_lb,
+            params.plot_sig_interactions_cmap_ub,
+            params.plot_format,
+            // misc
+            params.zstd_compression_lvl
         )
 
     publish:
