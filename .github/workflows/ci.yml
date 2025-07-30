@@ -48,6 +48,7 @@ env:
   TEST_DOMAINS_BED: "ENCFF447ERX.1000000.compartments.bed"
   TEST_DOMAINS_BEDPE: "ENCFF447ERX.1000000.domains.bedpe"
   NXF_ANSI_LOG: false
+  NXF_SYNTAX_PARSER: "v2"
 
 jobs:
   preproc-test-dataset:
